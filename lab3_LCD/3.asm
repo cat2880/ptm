@@ -68,29 +68,32 @@ putstrLCD:
      SJMP putstrLCD
      koniec: RET
 
-; Procedura do przesuniecia kursora w prawo na LCD.
-MoveRight: 
-    LCDcntrlWR 0x14 ; przesun kursor w prawo
-    RET
+LCDcntrl:
+push ACC
+call wait_busy
+mov DPTR, #LCDcontrol
+pop ACC
+movx @DPTR, A
+ret
 
-; Procedura do przesuniecia kursora w lewo na LCD.
-MoveLeft: 
-    LCDcntrlWR 0x10 ; przesun kursor w lewo
-    RET
+LCDmoveL:
+call wait_busy
+mov a, #LCDmoveLEFT
+call LCDcntrl
+ret
 
-; Procedura do usuwania pojedynczego znaku z LCD.
-Delete: 
-    jmp MoveRight ; przesun kursor w prawo
-    LCDcharWR #0x20 ; zastap aktualny znak spacja
-    jmp MoveLeft ; przesun kursor w lewo
-    RET
+LCDmoveR:
+call wait_busy
+mov a, #LCDmoveRIGHT
+call LCDcntrl
+ret
 
-; Procedura do cofania kursora i usuwania pojedynczego znaku z LCD.
-BackSpace: 
-    jmp MoveLeft ; przesun kursor w lewo
-    LCDcharWR #0x20 ; zastap aktualny znak spacja
-    jmp MoveLeft ; przesun kursor w lewo ponownie
-    RET
+wait_busy:
+mov DPTR, #LCDstatus
+ wait:
+ movx A, @DPTR
+ jb ACC.7, wait
+ ret    
 	
 start: init_LCD
 
@@ -101,21 +104,8 @@ start: init_LCD
     mov dptr, #text1
     acall putstrLCD
 
-    ; Przesuniecie kursora w lewo
-    acall MoveLeft
-
-    ; Usuniecie znaku za pomoca BackSpace
-    acall BackSpace
-
-    ; Wyswietlenie pojedynczego znaku
-    mov A, #'X' ; Przykladowy znak do wyswietlenia
-    acall putcharLCD
-
-    ; Przesuniecie kursora w prawo
-    acall MoveRight
-
-    ; Usuniecie X znaku za pomoca Delete
-    acall Delete
+    acall LCDmoveR
+    acall LCDmoveR
 
 end_prog:
 nop
