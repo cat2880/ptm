@@ -1,0 +1,30 @@
+1jmp start
+; od tej linii zawsze zaczynamy program
+ORG 000BH
+; obstuga przerwania
+MOV THO, #00H
+: pretadowanie statej timera
+MOV TLO, #00H
+
+DEC RO
+; korekta licznika
+RETI
+; powót z przerwania
+org 0100h
+; dyektywa lokujaca nasz program od adresu 0100
+start: MOV TMOD, #01H
+; konfiguracja
+MOV THO, #00H
+; tadowanie statej timera
+MOV TLO, #00H
+
+SETB TRO
+; uruchomienie timera
+MOV IE, #82H
+; wtaczenie przerwania
+MOV A, #00H
+; zapalenie diod portu P1
+MOV P1, A
+
+
+; ciag dalszy na nastepnej stronie
