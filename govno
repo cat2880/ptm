@@ -1,0 +1,63 @@
+LJMP START  ; Skok do etykiety START
+
+ORG 000BH         ; Obsługa przerwania
+MOV TH0, #00H     ; Przeładowanie TH0
+MOV TL0, #00H     ; Stała timera
+INC R0            ; Korekta licznika
+RETI              ; Powrót z przerwania
+
+ORG 0100H         ; Program główny
+START:
+MOV TMOD, #01H    ; Konfiguracja timera
+MOV TH0, #00H     ; Załadowanie TH0
+MOV TL0, #00H     ; Załadowanie TL0
+SETB TR0          ; Start timera
+MOV IE, #82H      ; Włączenie przerwań: 1000 0010
+
+loop:
+  MOV A, P3       ; Wczytanie stanu portu P3
+  JNB ACC.5, timestmp_in_reg ; Czekanie na naciśnięcie guzika (P3, bit 5)
+  JMP loop
+
+timestmp_in_reg:
+  ; Jeżeli guzik jest naciśnięty, to pobieramy wartości w rejestrach r1 - r3
+  ; r1 - r0
+  ; r2 - TH0
+  ; r3 - TL0
+  MOV A, R0
+  MOV R1, A
+  MOV R2, TH0
+  MOV R3, TL0
+  ; Po pobraniu danych - zerujemy wszystkie liczniki
+  MOV TH0, #00h
+  MOV TL0, #00h
+  MOV R0, #00h
+
+  ; Migające diody na portach P1.4, P5, P6, P7 zależnie od wartości bitów w rejestrach R1 i R3
+  MOV A, R1        ; Wczytanie wartości R1 do akumulatora
+  ANL A, #0F0H     ; Pozostawienie jedynie 4 najmniej znaczących bitów
+  MOV P1, A        ; Wyświetlenie stanu diod na portach P1.4, P5, P6, P7
+
+  MOV A, R3        ; Wczytanie wartości R3 do akumulatora
+  ANL A, #0F0H     ; Pozostawienie jedynie 4 najmniej znaczących bitów
+  MOV P1, A        ; Wyświetlenie stanu diod na portach P1.4, P5, P6, P7
+
+  MOV A, #0FFH     ; Ustawienie wartości do sprawdzenia czasu przekroczonego
+  MOV R2, #0       ; Zerowanie rejestru pomocniczego
+  MOV R3, #0       ; Zerowanie rejestru pomocniczego
+
+check_timer:
+  JB TF0, update_diod_state  ; Jeśli flaga przekroczenia czasu TH0 ustawiona, przejdź do aktualizacji stanu diod
+  INC R2                     ; Inkrementacja rejestru pomocniczego
+  CJNE R2, #255, check_timer ; Jeśli rejestru pomocniczy nie osiągnął maksymalnej wartości, sprawdź ponownie
+  INC R3                     ; Inkrementacja rejestru pomocniczego
+  MOV R2, #0                 ; Zerowanie rejestru pomocniczego
+  CJNE R3, #255, check_timer ; Jeśli rejestru pomocniczy nie osiągnął maksymalnej wartości, sprawdź ponownie
+  SJMP loop                  ; Powrót do pętli głównej
+
+update_diod_state:
+  CPL P1.5                   ; Odwrócenie stanu diody na porcie P1.5
+  CPL P1.6                   ; Odwrócenie stanu diody na porcie P1.6
+  CPL P1.7                   ; Odwrócenie stanu diody na porcie P1.7
+  CLR TF0                    ; Wyczyszczenie flagi przekroczenia czasu TH0
+  SJMP loop                  ; Powrót do pętli gł ktory dzialal czesciowo
